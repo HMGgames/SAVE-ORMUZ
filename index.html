@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.11.13/lib/p5.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.11.13/lib/addons/p5.sound.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@900&display=swap" rel="stylesheet">
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+
+      html, body {
+        width: 100%; height: 100%;
+        background: #000;
+        overflow: hidden;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      canvas { display: block; touch-action: none; }
+
+      /* ── Lead gen modal ── */
+      #leadModal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 500;
+        justify-content: center;
+        align-items: center;
+        background: rgba(0,0,0,0.0); /* transparent — game canvas shows behind */
+      }
+      #leadModal.active { display: flex; }
+
+      #leadBox {
+        background: transparent;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        /* Position is driven by JS to sit over the canvas image */
+      }
+
+      #leadBox input {
+        width: 240px;
+        padding: 8px 12px;
+        background: #36200e;
+        color: #f4e4bc;
+        border: 2px solid #1a1007;
+        border-radius: 4px;
+        font-size: 16px;   /* 16px prevents iOS zoom */
+        font-family: 'Courier New', monospace;
+        outline: none;
+        -webkit-appearance: none;
+      }
+      #leadBox input::placeholder { color: #a08060; }
+
+      /* ── Rotate overlay ── */
+      #rotateOverlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: #0a0f1e;
+        z-index: 9999;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        font-family: 'Inter', sans-serif;
+        color: #fff;
+        gap: 24px;
+      }
+      #rotateOverlay .rotate-icon { font-size: 72px; animation: rotatePhone 2s ease-in-out infinite; }
+      #rotateOverlay h2 { font-size: 1.4rem; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; color: #f0c040; }
+      #rotateOverlay p  { font-size: 0.9rem; opacity: 0.6; max-width: 260px; }
+      @keyframes rotatePhone {
+        0%   { transform: rotate(0deg); }
+        40%  { transform: rotate(90deg); }
+        60%  { transform: rotate(90deg); }
+        100% { transform: rotate(90deg); }
+      }
+    </style>
+  </head>
+  <body>
+
+    <div id="rotateOverlay">
+      <div class="rotate-icon">📱</div>
+      <h2>Rotate your device</h2>
+      <p>Please switch to landscape mode to play.</p>
+    </div>
+
+    <!-- Lead gen modal — pure HTML, always works on iOS -->
+    <div id="leadModal">
+      <div id="leadBox">
+        <input id="inputNombre" type="text"  autocomplete="name"  placeholder="Your full name"  />
+        <input id="inputEmail"  type="email" autocomplete="email" placeholder="Your email"       />
+      </div>
+    </div>
+
+    <main></main>
+    <script src="sketch.js"></script>
+
+    <script>
+      const GAME_W = 800, GAME_H = 600;
+
+      /* Returns the canvas bounding rect */
+      function canvasRect() {
+        const c = document.querySelector('canvas');
+        return c ? c.getBoundingClientRect() : null;
+      }
+
+      /* Convert game-space Y to screen Y */
+      function gameY(gy) {
+        const r = canvasRect(); if (!r) return 0;
+        return r.top + gy * (r.height / GAME_H);
+      }
+      /* Scale a game-space width to screen px */
+      function gameW(gw) {
+        const r = canvasRect(); if (!r) return gw;
+        return gw * (r.width / GAME_W);
+      }
+
+      /* Position the two inputs over the canvas registration image */
+      function positionLeadInputs() {
+        const r = canvasRect(); if (!r) return;
+        const scaleX = r.width  / GAME_W;
+        const scaleY = r.height / GAME_H;
+
+        const inputW = Math.round(240 * scaleX);
+        const inputH = Math.round(34  * scaleY);
+        const leftPx = r.left + (GAME_W / 2 - 120) * scaleX;
+
+        const n = document.getElementById('inputNombre');
+        const e = document.getElementById('inputEmail');
+        const box = document.getElementById('leadBox');
+
+        // Y positions matching drawRegistro() canvas coords
+        const nombreScreenY = r.top + (GAME_H / 2 + 45)  * scaleY;
+        const emailScreenY  = r.top + (GAME_H / 2 + 130) * scaleY;
+
+        box.style.position = 'absolute';
+        box.style.left = leftPx + 'px';
+        box.style.top  = nombreScreenY + 'px';
+        box.style.gap  = Math.round(emailScreenY - nombreScreenY - inputH) + 'px';
+        box.style.width = inputW + 'px';
+
+        n.style.width  = inputW + 'px';
+        n.style.height = inputH + 'px';
+        e.style.width  = inputW + 'px';
+        e.style.height = inputH + 'px';
+      }
+
+      /* Called from sketch.js */
+      window.showLeadInputs = function() {
+        document.getElementById('leadModal').classList.add('active');
+        positionLeadInputs();
+      };
+      window.hideLeadInputs = function() {
+        document.getElementById('leadModal').classList.remove('active');
+        document.getElementById('inputNombre').value = '';
+        document.getElementById('inputEmail').value  = '';
+      };
+      window.getLeadNombre = function() { return document.getElementById('inputNombre').value.trim(); };
+      window.getLeadEmail  = function() { return document.getElementById('inputEmail').value.trim();  };
+
+      /* Scale canvas to fill screen */
+      function scaleCanvas() {
+        const canvas = document.querySelector('canvas');
+        if (!canvas) return;
+        const scaleX = (window.innerWidth  * 0.95) / GAME_W;
+        const scaleY = (window.innerHeight * 0.95) / GAME_H;
+        const scale  = Math.min(scaleX, scaleY);
+        canvas.style.width  = Math.round(GAME_W * scale) + 'px';
+        canvas.style.height = Math.round(GAME_H * scale) + 'px';
+        positionLeadInputs(); // reposition whenever canvas resizes
+      }
+
+      function checkOrientation() {
+        const overlay  = document.getElementById('rotateOverlay');
+        const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        if (isMobile && window.innerHeight > window.innerWidth) {
+          overlay.style.display = 'flex';
+        } else {
+          overlay.style.display = 'none';
+          scaleCanvas();
+        }
+      }
+
+      window.addEventListener('load', () => setTimeout(() => { scaleCanvas(); checkOrientation(); }, 100));
+      window.addEventListener('resize', () => { scaleCanvas(); checkOrientation(); });
+      window.addEventListener('orientationchange', () => setTimeout(() => { scaleCanvas(); checkOrientation(); }, 200));
+    </script>
+
+  </body>
+</html>
