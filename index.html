@@ -30,6 +30,7 @@
         justify-content: center;
         align-items: center;
         background: rgba(0,0,0,0.0); /* transparent — game canvas shows behind */
+        touch-action: manipulation;
       }
       #leadModal.active { display: flex; }
 
@@ -151,6 +152,23 @@
         e.style.height = inputH + 'px';
       }
 
+
+      function prepareLeadInputs() {
+        const nombre = document.getElementById('inputNombre');
+        const email = document.getElementById('inputEmail');
+        [nombre, email].forEach((input) => {
+          if (!input) return;
+          const forceFocus = (ev) => {
+            ev.stopPropagation();
+            input.focus();
+          };
+          input.addEventListener('touchstart', forceFocus, { passive: true });
+          input.addEventListener('touchend', forceFocus, { passive: true });
+          input.addEventListener('pointerdown', forceFocus);
+          input.addEventListener('click', forceFocus);
+        });
+      }
+
       /* Called from sketch.js */
       window.showLeadInputs = function() {
         document.getElementById('leadModal').classList.add('active');
@@ -187,7 +205,10 @@
         }
       }
 
-      window.addEventListener('load', () => setTimeout(() => { scaleCanvas(); checkOrientation(); }, 100));
+      window.addEventListener('load', () => {
+        prepareLeadInputs();
+        setTimeout(() => { scaleCanvas(); checkOrientation(); }, 100);
+      });
       window.addEventListener('resize', () => { scaleCanvas(); checkOrientation(); });
       window.addEventListener('orientationchange', () => setTimeout(() => { scaleCanvas(); checkOrientation(); }, 200));
     </script>
